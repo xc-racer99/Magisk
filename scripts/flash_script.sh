@@ -262,10 +262,12 @@ chmod -R 755 $CHROMEDIR/futility $BINDIR
 SYSTEMLIB=/system/lib
 ($IS64BIT) && SYSTEMLIB=/system/lib64
 
+if false; then
 find_boot_image
 if [ -z "$BOOTIMAGE" ]; then
   ui_print "! Unable to detect boot image"
   exit 1
+fi
 fi
 
 ##########################################################################################
@@ -327,11 +329,14 @@ cp -af $INSTALLER/common/magiskhide/. /magisk/.core/magiskhide
 # Boot image patch
 ##########################################################################################
 
+if false; then
 ui_print "- Found Boot Image: $BOOTIMAGE"
+fi
 
 rm -rf $TMPDIR/boottmp 2>/dev/null
 mkdir -p $TMPDIR/boottmp
 
+if false; then
 ui_print "- Unpacking boot image"
 unpack_boot $BOOTIMAGE
 if [ $? -ne 0 ]; then
@@ -403,6 +408,17 @@ else
     chmod -R 755 /magisk/phh/bin
   fi
 fi
+else
+# SGS Modification
+  ui_print "- Extracting ramdisk"
+  rm -rf $UNPACKDIR $RAMDISK 2>/dev/null
+  mkdir -p $UNPACKDIR
+  mkdir -p $RAMDISK
+  mount /ramdisk
+  cp /ramdisk/ramdisk.img $UNPACKDIR/ramdisk.gz
+  cd $RAMDISK
+  gunzip -c < $UNPACKDIR/ramdisk.gz | cpio -i
+fi
 
 # Patch ramdisk
 ui_print "- Patching ramdisk"
@@ -444,6 +460,7 @@ cp -af $INSTALLER/common/magic_mask.sh sbin/magic_mask.sh
 chmod 0755 magisk
 chmod 0750 init.magisk.rc sbin/magic_mask.sh
 
+if false; then
 ui_print "- Repacking boot image"
 repack_boot
 
@@ -467,6 +484,14 @@ chmod 644 $NEWBOOT
 ui_print "- Flashing new boot image"
 [ ! -L $BOOTIMAGE ] && dd if=/dev/zero of=$BOOTIMAGE bs=4096 2>/dev/null
 dd if=$NEWBOOT of=$BOOTIMAGE bs=4096
+else
+cd $RAMDISK
+find . | cpio -o -H newc 2>/dev/null | gzip -9 > $UNPACKDIR/ramdisk.gz
+
+ui_print "- Moving modified ramdisk"
+mv $UNPACKDIR/ramdisk.gz /ramdisk/ramdisk.img
+umount /ramdisk
+fi
 
 if (! $BOOTMODE); then
   ui_print "- Unmounting partitions"
